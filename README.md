@@ -1,4 +1,8 @@
-## Running the Cake Manager application
+## Run tests
+
+    ./gradlew clean test
+
+## Building and running the Cake Manager application
 
 ### Standalone
 
