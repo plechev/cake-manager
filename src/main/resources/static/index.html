@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="_csrf" content="${_csrf.token}" />
+    <meta name="_csrf_header" content="${_csrf.headerName}" />
+    <title>Cake Manager</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        * {
+            font-family: sans-serif;
+        }
+
+        table td {
+            border: 1px solid gray;
+            padding: 5px
+        }
+
+        thead td {
+            background-color: aliceblue;
+        }
+
+        table caption {
+            font-weight: bold;
+        }
+
+        tr#add-cake-row {
+            background-color: aquamarine;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="user-details"></div>
+
+<table id="cake-list-tbl">
+    <caption>Cake list</caption>
+    <thead>
+    <tr>
+        <td>Title</td>
+        <td>Description</td>
+        <td>Image</td>
+        <td></td>
+    </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+    <tr id="add-cake-row">
+        <td><input type="text" id="title-input" size="50" maxlength="100"></td>
+        <td><input type="text" id="description-input" size="50" maxlength="100"></td>
+        <td><input type="text" id="image-input" size="50" maxlength="300"></td>
+        <td>
+            <button id="add-cake-btn">Add Cake</button>
+        </td>
+    </tr>
+    </tfoot>
+</table>
+
+</body>
+<script>
+
+  function loadCakes () {
+    $.ajax({
+      url: '/cakes',
+      method: 'GET',
+      success: function (result) {
+        console.log('Got cakes: ' + result)
+        var table = $('#cake-list-tbl')
+        table.find('tbody tr').remove()
+        result.forEach(function (cake) {
+          table.append(
+            '<tr><td>' + cake.title + '</td><td>' + cake.description + '</td><td><img alt="' + cake.title + '" src="' + cake.image + '">' + '</td><td><button id="delete-btn" value="' + cake.id + '">Delete</button></td></tr>')
+        })
+      }
+    })
+  }
+
+  function deleteCake (cakeId) {
+    $.ajax({
+      url: '/cakes/' + cakeId,
+      method: 'DELETE',
+      success: function (result) {
+        loadCakes()
+      },
+      error: function (result) {
+        console.log(result)
+        alert('Unexpected error ' + result.status)
+      }
+    })
+  }
+
+  function getUserDetails () {
+    $.ajax({
+      url: '/user',
+      method: 'GET',
+      success: function (result) {
+        $('#user-details').html('<span>Hi ' + result.username + '</span> <a href="/logout">Logout</a>')
+      },
+      error: function (result) {
+        $('#user-details').html('<a href="/login">Login</a>')
+      }
+    })
+  }
+
+  $(document).ready(function () {
+    console.log('loading all cakes')
+    loadCakes()
+    getUserDetails()
+  })
+
+  $('#add-cake-btn').click(function () {
+    console.log('Adding new cake ... ')
+    $.ajax({
+      url: '/cakes',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({
+        title: $('#title-input').val(),
+        description: $('#description-input').val(),
+        image: $('#image-input').val()
+      }),
+      success: function (result) {
+        loadCakes()
+        $('#title-input').val('')
+        $('#description-input').val('')
+        $('#image-input').val('')
+      },
+      error: function (result) {
+        console.log(result)
+        if (result.status === 400) {
+          alert('Invalid cake - all fields are required')
+        } else {
+          alert('Unexpected error ' + result.status)
+        }
+      }
+    })
+  })
+
+  $(document).on('click', '#delete-btn', function (event) {
+    deleteCake(event.target.value)
+  })
+
+</script>
+</html>

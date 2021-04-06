@@ -1,0 +1,86 @@
+import org.codehaus.groovy.runtime.GStringImpl
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.4.4'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'com.bmuschko.docker-spring-boot-application' version '6.7.0'
+    id "com.avast.gradle.docker-compose" version "0.14.2"
+}
+
+group = 'com.waracle'
+version = '0.0.1'
+sourceCompatibility = '11'
+
+ext {
+    appImageName = "waracle/$project.name:$version"
+    appContainerName = "cake-manager"
+    serverPort = 8282
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.apache.logging.log4j:log4j-core:2.11.2'
+
+    runtimeOnly 'com.h2database:h2'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+}
+
+configurations.all {
+    resolutionStrategy.dependencySubstitution.all { dependency ->
+        if (dependency.requested instanceof ModuleComponentSelector && dependency.requested.module == 'spring-boot-starter-logging') {
+            dependency.useTarget("org.springframework.boot:spring-boot-starter-log4j2:$dependency.requested.version"
+                    , 'Use log4j 2 instead of Boot default logback')
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// Docker
+
+docker {
+    springBootApplication {
+        baseImage = 'openjdk:15-jdk-alpine'
+        ports = [serverPort]
+    }
+}
+
+dockerBuildImage {
+    images = [appImageName]
+}
+
+task dockerRun(type: Exec) {
+    group 'application'
+    description 'Rebuild and run cake manager app'
+    clean.mustRunAfter('dockerStop')
+    dockerBuildImage.mustRunAfter('clean')
+    dependsOn('dockerStop', 'clean', 'dockerBuildImage')
+    commandLine "docker", "run", "-d", "-p$serverPort:$serverPort", "--name=$appContainerName", "$appImageName"
+}
+
+task dockerStop(type: Exec) {
+    group 'application'
+    description 'Stop cake manager app'
+    ignoreExitValue true
+    commandLine "docker", "rm", "-f", appContainerName
+}
+
+
+// Docker Compose
+
+composeUp.dependsOn('dockerBuildImage')
