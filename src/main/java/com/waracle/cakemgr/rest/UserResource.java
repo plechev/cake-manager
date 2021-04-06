@@ -19,7 +19,6 @@ public class UserResource {
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication instanceof OAuth2AuthenticationToken) {
             OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
-            System.out.println(oauthToken);
             String name = oauthToken.getPrincipal().getAttribute("name");
             if (name == null) {
                 name = oauthToken.getPrincipal().getName();
